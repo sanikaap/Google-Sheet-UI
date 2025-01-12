@@ -1,6 +1,7 @@
-import { useState, useCallback } from 'react';
+import React, { useState, useCallback } from 'react';
 import { CellData, Selection, SpreadsheetData } from '../types/spreadsheet';
 import { Toolbar } from './Toolbar';
+import { ChartDialog } from './ChartDialog';
 import { evaluateFormula } from '../utils/spreadsheet';
 
 const ROWS = 20;
@@ -15,7 +16,9 @@ const initializeData = (): SpreadsheetData => {
 export function Spreadsheet() {
   const [data, setData] = useState<SpreadsheetData>(initializeData());
   const [selection, setSelection] = useState<Selection | null>(null);
+  const [selectionEnd, setSelectionEnd] = useState<Selection | null>(null);
   const [editing, setEditing] = useState(false);
+  const [showChart, setShowChart] = useState(false);
 
   const getColLabel = (index: number): string => {
     let label = '';
@@ -32,8 +35,13 @@ export function Spreadsheet() {
     return evaluateFormula(cell.value, (r, c) => getCellValue(r, c));
   }, [data]);
 
-  const handleCellClick = (row: number, col: number) => {
-    setSelection({ row, col });
+  const handleCellClick = (row: number, col: number, isShiftKey: boolean = false) => {
+    if (isShiftKey && selection) {
+      setSelectionEnd({ row, col });
+    } else {
+      setSelection({ row, col });
+      setSelectionEnd(null);
+    }
     setEditing(false);
   };
 
@@ -80,6 +88,27 @@ export function Spreadsheet() {
     return data[selection.row][selection.col];
   };
 
+  const getSelectedRange = () => {
+    if (!selection) return null;
+    if (!selectionEnd) return {
+      startRow: selection.row,
+      startCol: selection.col,
+      endRow: selection.row,
+      endCol: selection.col
+    };
+
+    return {
+      startRow: Math.min(selection.row, selectionEnd.row),
+      startCol: Math.min(selection.col, selectionEnd.col),
+      endRow: Math.max(selection.row, selectionEnd.row),
+      endCol: Math.max(selection.col, selectionEnd.col)
+    };
+  };
+
+  const getDisplayData = () => {
+    return data.map(row => row.map(cell => getCellValue(0, 0)));
+  };
+
   return (
     <div className="flex flex-col h-screen bg-gray-50">
       <Toolbar
@@ -90,6 +119,7 @@ export function Spreadsheet() {
         onFontSizeChange={(fontSize) => updateCellStyle({ fontSize })}
         onColorChange={(color) => updateCellStyle({ color })}
         onFindAndReplace={handleFindAndReplace}
+        onCreateChart={() => setShowChart(true)}
         onHeadingClick={() => {
           const currentCell = getSelectedCell();
           updateCellStyle({ 
@@ -118,20 +148,28 @@ export function Spreadsheet() {
                   {rowIndex + 1}
                 </td>
                 {row.map((cell, colIndex) => {
-                  const isSelected = selection?.row === rowIndex && selection?.col === colIndex;
+                  const selectedRange = getSelectedRange();
+                  const isInRange = selectedRange && 
+                    rowIndex >= selectedRange.startRow && 
+                    rowIndex <= selectedRange.endRow && 
+                    colIndex >= selectedRange.startCol && 
+                    colIndex <= selectedRange.endCol;
+                  
                   const cellStyle = cell.style || {};
-                  const displayValue = editing && isSelected ? cell.value : getCellValue(rowIndex, colIndex);
+                  const displayValue = editing && selection?.row === rowIndex && selection?.col === colIndex 
+                    ? cell.value 
+                    : getCellValue(rowIndex, colIndex);
                   
                   return (
                     <td
                       key={colIndex}
                       className={`w-24 h-8 border border-gray-300 relative ${
-                        isSelected ? 'bg-blue-50' : 'bg-white'
+                        isInRange ? 'bg-blue-50' : 'bg-white'
                       }`}
-                      onClick={() => handleCellClick(rowIndex, colIndex)}
+                      onClick={(e) => handleCellClick(rowIndex, colIndex, e.shiftKey)}
                       onDoubleClick={handleDoubleClick}
                     >
-                      {isSelected && editing ? (
+                      {editing && selection?.row === rowIndex && selection?.col === colIndex ? (
                         <input
                           type="text"
                           value={cell.value}
@@ -172,6 +210,14 @@ export function Spreadsheet() {
           </tbody>
         </table>
       </div>
+
+      {showChart && (
+        <ChartDialog
+          onClose={() => setShowChart(false)}
+          data={getDisplayData()}
+          selectedRange={getSelectedRange()}
+        />
+      )}
     </div>
   );
 }

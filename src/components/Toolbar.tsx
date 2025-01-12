@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Bold, Italic, AlignLeft, AlignCenter, AlignRight, Type, Heading1, Search, Replace } from 'lucide-react';
+import { Bold, Italic, AlignLeft, AlignCenter, AlignRight, Type, Heading1, Search, Replace, BarChart } from 'lucide-react';
 
 interface ToolbarProps {
   onBoldClick: () => void;
@@ -9,6 +9,7 @@ interface ToolbarProps {
   onColorChange: (color: string) => void;
   onHeadingClick: () => void;
   onFindAndReplace?: (find: string, replace: string) => void;
+  onCreateChart: () => void;
   activeCell?: {
     bold?: boolean;
     italic?: boolean;
@@ -27,6 +28,7 @@ export function Toolbar({
   onColorChange,
   onHeadingClick,
   onFindAndReplace,
+  onCreateChart,
   activeCell 
 }: ToolbarProps) {
   const [showFindReplace, setShowFindReplace] = useState(false);
@@ -137,6 +139,17 @@ export function Toolbar({
           <Search size={18} />
           <Replace size={18} />
           <span className="text-sm">Find & Replace</span>
+        </button>
+
+        <div className="w-px h-6 bg-gray-300 mx-2" />
+
+        <button
+          onClick={onCreateChart}
+          className="p-2 rounded hover:bg-gray-100 flex items-center gap-1"
+          title="Create Chart"
+        >
+          <BarChart size={18} />
+          <span className="text-sm">Create Chart</span>
         </button>
       </div>
 
